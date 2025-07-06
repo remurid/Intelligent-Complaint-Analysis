@@ -1,0 +1,8 @@
+# Add your project dependencies here
+pandas
+matplotlib
+seaborn
+sentence-transformers
+faiss-cpu
+langchain
+chromadb
