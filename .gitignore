@@ -176,4 +176,5 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
 *.csv
