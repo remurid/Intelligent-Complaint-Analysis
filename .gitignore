@@ -176,4 +176,5 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+# Ignore all CSVs except filtered_complaints.csv
 *.csv
