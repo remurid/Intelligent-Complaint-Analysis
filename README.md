@@ -1,41 +1,144 @@
-# Intelligent Complaint Analysis: RAG Chatbot
+# 💬 Intelligent Complaint Analysis: RAG Chatbot
 
-This project builds a Retrieval-Augmented Generation (RAG) chatbot for answering financial complaints using the CFPB dataset. It features modular, object-oriented code for data cleaning, chunking, embedding, and vector store indexing for efficient semantic search and retrieval.
+This project builds a **Retrieval-Augmented Generation (RAG)** chatbot for analyzing and answering financial complaints using real-world data from the **Consumer Financial Protection Bureau (CFPB)**.  
 
-## Installation
+It uses **semantic search** via ChromaDB and **large language models (LLMs)** to return insightful, grounded answers backed by actual complaint narratives.
+
+---
+
+## 📦 Installation
 
 ```bash
+git clone https://github.com/remurid/Intelligent-Complaint-Analysis.git
+cd Intelligent-Complaint-Analysis
 pip install -r requirements.txt
 ```
 
-## Usage
+> 🧪 Python 3.10+ is recommended  
+> 🧠 Make sure you have `transformers`, `chromadb`, `sentence-transformers`, and `streamlit`.
 
-### 1. Data Preprocessing & EDA
-Run the notebook in `notebooks/eda_preprocessing.ipynb` to explore and clean the complaint data. The cleaned data will be saved to `data/filtered_complaints.csv`.
+---
 
-### 2. Chunking, Embedding, and Indexing
-Run the following script to chunk narratives, generate embeddings, and build a vector store:
+## 🚀 Project Workflow
+
+### ✅ Step 1: Data Preprocessing & EDA
+Explore and clean raw complaints in the notebook:
+
+```bash
+notebooks/eda_preprocessing.ipynb
+```
+
+This will output a cleaned dataset to:
+
+```
+data/filtered_complaints.csv
+```
+
+---
+
+### ✅ Step 2: Chunking, Embedding, and Vector Store Indexing
+
+Generate vector embeddings and build the ChromaDB vector store:
 
 ```bash
 python scripts/chunk_embed_index.py
 ```
-This will create a persistent ChromaDB vector store in the `complaint_db/` directory.
 
-## Project Structure
+Or use the modular script:
 
-- `src/core/`: Modular, object-oriented code for data processing, chunking, embedding, and vector storage
-- `src/utils/`: Configuration and utility modules
-- `notebooks/eda_preprocessing.ipynb`: EDA and data cleaning notebook
-- `scripts/chunk_embed_index.py`: Script for chunking, embedding, and vector store creation
-- `data/filtered_complaints.csv`: Cleaned and filtered complaint data
-- `complaint_db/`: Directory containing the ChromaDB vector store
-- `tests/unit/`: Unit tests for core modules
-- `docs/`: Documentation
+```bash
+python scripts/task2_create_vector_store.py
+```
 
-## Requirements
-See `requirements.txt` for all dependencies, including pandas, langchain, sentence-transformers, and chromadb.
+→ Output is stored in:  
+```
+vector_store_chroma/chroma_db/
+```
 
-## Notes
-- The embedding model used is `all-MiniLM-L6-v2` (sentence-transformers).
-- ChromaDB is used for fast vector search and retrieval.
-- The codebase is modular and object-oriented for maintainability and extensibility.
+---
+
+### ✅ Step 3: Build and Evaluate the RAG Pipeline
+
+Run qualitative evaluation using:
+
+```bash
+python scripts/rag_pipeline.py
+```
+
+This retrieves relevant complaint chunks, sends them to an LLM, and prints the AI-generated answers.
+
+---
+
+### ✅ Step 4: Interactive Chat Interface (Streamlit)
+
+Launch the chatbot UI:
+
+```bash
+streamlit run app.py
+```
+
+Features:
+- Input box for questions
+- Answer generated using retrieved chunks
+- Retrieved source texts shown for transparency
+- “Clear chat” button
+
+---
+
+## 🗂 Project Structure
+
+```
+├── app.py                         # Streamlit chatbot interface
+├── scripts/
+│   ├── chunk_embed_index.py      # Chunking + embedding script (Task 2)
+│   ├── task2_create_vector_store.py # Alt Task 2 version (modular)
+│   └── rag_pipeline.py           # RAG logic + evaluation (Task 3)
+├── src/
+│   ├── core/                     # Reusable class-based modules (optional)
+│   └── utils/                    # Helper functions or configs
+├── data/
+│   └── filtered_complaints.csv   # Cleaned data (from Task 1)
+├── notebooks/
+│   └── eda_preprocessing.ipynb   # Task 1: EDA + preprocessing
+├── vector_store_chroma/
+│   ├── chroma_db/                # Persisted ChromaDB vector store
+│   └── metadata.pkl              # Optional metadata backup
+├── requirements.txt              # Dependencies
+├── README.md                     # Project documentation
+└── tests/                        # (Optional) unit tests
+```
+
+---
+
+## 🧠 Tech Stack
+
+| Component        | Tool                         |
+|------------------|------------------------------|
+| Language Model   | `google/flan-t5-base`        |
+| Embedding Model  | `sentence-transformers/all-MiniLM-L6-v2` |
+| Vector Database  | `ChromaDB`                   |
+| Frontend UI      | `Streamlit`                  |
+| Chunking         | `LangChain` TextSplitter     |
+| Dataset          | CFPB Complaint Dataset       |
+
+---
+
+## 📝 Notes
+
+- Retrieval is semantic — results are based on meaning, not keywords.
+- The chatbot is transparent: it always shows the source texts used in the answer.
+- Modular architecture makes it easy to plug in other models, databases, or UIs.
+
+
+---
+
+## 🤝 Acknowledgements
+
+This project was developed as part of the **10 Academy AI Mastery Program – Week 6 Challenge**.
+
+---
+
+## 📬 Contact
+
+> Remedan Ridwan – [rexrid1@gmail.com]  
+> GitHub: [github.com/remurid]

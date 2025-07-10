@@ -76,24 +76,24 @@ class RAGPipeline:
         
         # This prompt template is critical for guiding the LLM's behavior.
         prompt_template = f"""
-You are a helpful financial analyst assistant for CrediTrust. Your task is to answer questions about customer complaints based ONLY on the provided context.
+        You are a helpful financial analyst assistant for CrediTrust. Your task is to answer questions about customer complaints based ONLY on the provided context.
 
-Follow these rules:
-1.  Synthesize an answer directly from the information given in the "CONTEXT" section.
-2.  Do not use any outside knowledge or make up information.
-3.  If the context does not contain the answer to the question, you MUST state: "I do not have enough information in the provided context to answer this question."
-4.  Quote or reference specific parts of the context to support your answer where possible.
+        Follow these rules:
+        1.  Synthesize an answer directly from the information given in the "CONTEXT" section.
+        2.  Do not use any outside knowledge or make up information.
+        3.  If the context does not contain the answer to the question, you MUST state: "I do not have enough information in the provided context to answer this question."
+        4.  Quote or reference specific parts of the context to support your answer where possible.
 
-CONTEXT:
----
-{context_str}
----
+        CONTEXT:
+        ---
+        {context_str}
+        ---
 
-QUESTION:
-{question}
+        QUESTION:
+        {question}
 
-ANSWER:
-"""
+        ANSWER:
+        """
         return prompt_template
 
     def answer_question(self, question):
