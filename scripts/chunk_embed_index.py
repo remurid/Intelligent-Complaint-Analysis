@@ -3,126 +3,102 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import chromadb
 import time
+import os
+import shutil
 
 # --- Configuration ---
-INPUT_CSV_PATH = './data/filtered_complaints.csv'  # Path to the cleaned data from Task 1
-DB_PATH = "complaint_db"                    # Directory to save the vector database
-COLLECTION_NAME = "financial_complaints"    # Name of the collection in ChromaDB
-EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'   # Hugging Face model for embeddings
-CHUNK_SIZE = 512                            # Max characters per text chunk
-CHUNK_OVERLAP = 50                          # Overlap between consecutive chunks
+INPUT_CSV_PATH = './data/filtered_complaints.csv'
+DB_PATH = 'complaint_db'
+COLLECTION_NAME = 'financial_complaints'
+EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'
+CHUNK_SIZE = 512
+CHUNK_OVERLAP = 50
+REBUILD_DB = True  # Set to True to delete and recreate the collection
 
 def main():
-    """
-    Main function to execute the entire data processing and indexing pipeline.
-    """
-    print("--- Starting Task 2: Vector Store Creation ---")
+    print("\n--- Starting Task 2: Vector Store Creation ---")
 
-    # 1. Load Cleaned Data
-    # ---------------------
+    # 1. Load cleaned data
+    print(f"\n[1/5] Loading cleaned data from '{INPUT_CSV_PATH}'...")
     try:
-        print(f"\n[1/5] Loading cleaned data from '{INPUT_CSV_PATH}'...")
         df = pd.read_csv(INPUT_CSV_PATH)
-        # Ensure the narrative column is treated as a string and drop any empty rows
-        df['Consumer complaint narrative'] = df['Consumer complaint narrative'].astype(str)
-        df.dropna(subset=['Consumer complaint narrative'], inplace=True)
-        print(f"-> Successfully loaded {len(df)} complaints.")
+        print("Available columns:", df.columns.tolist())
+        print(f"-> Loaded {len(df)} complaints.")
     except FileNotFoundError:
-        print(f"Error: The file '{INPUT_CSV_PATH}' was not found.")
-        print("Please make sure you have run Task 1 and the output CSV is in the correct location.")
+        print("❌ Error: Cleaned CSV not found. Run Task 1 first.")
         return
 
-    # 2. Chunk the Text Narratives
-    # ----------------------------
-    print(f"\n[2/5] Chunking text narratives (Chunk Size: {CHUNK_SIZE}, Overlap: {CHUNK_OVERLAP})...")
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP
-    )
-    # The .apply method runs the splitter on each narrative in the DataFrame
-    df['chunks'] = df['Consumer complaint narrative'].apply(lambda x: text_splitter.split_text(x))
-    print("-> Text chunking complete.")
+    # 2. Chunk narratives
+    print(f"\n[2/5] Chunking narratives (chunk_size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP})...")
+    splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    df['chunks'] = df['Consumer complaint narrative'].astype(str).apply(lambda x: splitter.split_text(x))
+    print("-> Chunking complete.")
 
-    # 3. Initialize Embedding Model and Vector Store
-    # ----------------------------------------------
-    print(f"\n[3/5] Initializing embedding model ('{EMBEDDING_MODEL_NAME}') and ChromaDB...")
-    
-    # Initialize ChromaDB client for persistent storage
+    # 3. Setup ChromaDB
+    if REBUILD_DB and os.path.exists(DB_PATH):
+        print(f"\n[3/5] Rebuilding ChromaDB. Deleting old DB at '{DB_PATH}'...")
+        shutil.rmtree(DB_PATH)
+
+    print("-> Initializing ChromaDB client...")
     client = chromadb.PersistentClient(path=DB_PATH)
-    
-    # Create or get the collection. This is where the vectors will be stored.
-    # We pass the embedding model name to the collection metadata.
-    # ChromaDB can use this to automatically handle embeddings if needed.
+
     collection = client.get_or_create_collection(
         name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"} # Specifies the distance metric for similarity search
+        metadata={"hnsw:space": "cosine"}
     )
-    print(f"-> ChromaDB client initialized. Using collection: '{COLLECTION_NAME}'.")
+    print(f"-> Collection ready: '{COLLECTION_NAME}'")
 
-    # 4. Process, Embed, and Store Documents
-    # ----------------------------------------
-    print("\n[4/5] Processing and storing documents in the vector store...")
+    # 4. Embed and Add Documents
+    print("\n[4/5] Embedding and storing chunks...")
+    model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    doc_count = 0
+
     start_time = time.time()
-    
-    # Keep track of documents already in the collection to avoid duplicates
-    existing_ids = set(collection.get(include=[])['ids'])
-    print(f"-> Found {len(existing_ids)} existing documents in the collection.")
-    
-    doc_id_counter = 0
-    new_docs_added = 0
 
-    # Loop through each row in the DataFrame
-    for index, row in df.iterrows():
-        complaint_id = str(row['Complaint ID'])
+    for idx, row in df.iterrows():
         product = row['Product']
-        
-        # Loop through each chunk of the current complaint
-        for i, chunk_text in enumerate(row['chunks']):
-            # Create a unique ID for each chunk to prevent duplicates
-            doc_id = f"{complaint_id}_{i}"
-            
-            if doc_id not in existing_ids:
-                # Add the document to the collection
-                collection.add(
-                    documents=[chunk_text],
-                    metadatas=[{
-                        'product': product,
-                        'complaint_id': complaint_id 
-                    }],
-                    ids=[doc_id]
-                )
-                new_docs_added += 1
+        chunks = row['chunks']
+        base_id = f"row{idx}"
+
+        for i, chunk_text in enumerate(chunks):
+            chunk_id = f"{base_id}_{i}"
+            vector = model.encode(chunk_text)
+
+            collection.add(
+                documents=[chunk_text],
+                embeddings=[vector.tolist()],
+                metadatas=[{
+                    'product': product,
+                    'source_row': idx
+                }],
+                ids=[chunk_id]
+            )
+            doc_count += 1
 
     end_time = time.time()
-    print(f"-> Processing complete.")
-    print(f"-> Added {new_docs_added} new documents to the collection.")
-    print(f"-> Total documents in collection: {collection.count()}.")
-    print(f"-> Time taken: {end_time - start_time:.2f} seconds.")
+    print(f"-> Added {doc_count} chunks to vector store.")
+    print(f"-> Total documents in collection now: {collection.count()}")
+    print(f"-> Time taken: {end_time - start_time:.2f}s")
 
-    # 5. Verify the Vector Store
-    # --------------------------
-    print("\n[5/5] Running a verification query...")
+    # 5. Verify
+    print("\n[5/5] Running verification query...")
     try:
-        query_text = "My bank charged me an incorrect overdraft fee"
-        results = collection.query(
-            query_texts=[query_text],
-            n_results=3  # Find the top 3 most similar chunks
-        )
+        query_text = "My loan was wrongly charged"
+        results = collection.query(query_texts=[query_text], n_results=3)
 
-        print(f"\n--- Verification Results for Query: '{query_text}' ---")
+        print(f"\n--- Results for query: '{query_text}' ---")
         if not results['documents'][0]:
-             print("-> Query returned no results. The database might be empty or the query too specific.")
+            print("⚠️  No results found. Check if chunking or filtering was too strict.")
         else:
             for i, doc in enumerate(results['documents'][0]):
                 print(f"\nResult {i+1}:")
-                print(f"  Text: '{doc[:150].strip()}...'") # Print the first 150 characters
+                print(f"  Text: {doc[:150]}...")
                 print(f"  Metadata: {results['metadatas'][0][i]}")
                 print(f"  Distance: {results['distances'][0][i]:.4f}")
     except Exception as e:
-        print(f"An error occurred during verification: {e}")
+        print(f"❌ Verification failed: {e}")
 
-    print("\n--- Task 2 Complete ---")
-    print(f"Your vector store is ready and saved in the '{DB_PATH}' directory.")
+    print("\n✅ Task 2 Complete. Vector DB is ready in:", DB_PATH)
 
 if __name__ == '__main__':
     main()

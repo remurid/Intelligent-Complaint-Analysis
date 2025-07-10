@@ -178,3 +178,4 @@ logs/
 *.temp
 
 *.csv
+complaint_db/
