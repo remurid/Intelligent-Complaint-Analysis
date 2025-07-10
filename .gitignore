@@ -178,3 +178,4 @@ logs/
 *.temp
 # Ignore all CSVs except filtered_complaints.csv
 *.csv
+complaint_db/
