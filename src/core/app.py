@@ -1,8 +1,9 @@
-import streamlit as st
 from scripts.rag_pipeline import RAGPipeline
+import streamlit as st
+
 
 # --- Configuration ---
-DB_PATH = "./complaint_db"
+DB_PATH = "././complaint_db"
 COLLECTION_NAME = "financial_complaints"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 LLM_MODEL = "google/flan-t5-base"
